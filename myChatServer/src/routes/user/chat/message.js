@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Message = require("@/models/chat/Message");
 const ResponseResult = require("@/utlis/result"); // 确保路径正确
-
+const upload = require("@/plugins/multer");
 // 创建消息的 API
 router.post("/", async (req, res, next) => {
   try {
@@ -53,6 +53,21 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.post("/upload", upload.single("image"), async (req, res, next) => {
+  try {
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${
+      req.file.filename
+    }`;
+    console.log("body:", req.body);
+    const { sender, room, type } = req.body;
+    const newMessage = new Message({ sender, room, type, imageUrl });
+    const savedMessage = await newMessage.save();
+    return ResponseResult.success(res, savedMessage, "消息创建成功");
+  } catch (error) {
+    console.error("Error creating message:", error);
+    next(error);
+  }
+});
 router.get("/", async (req, res, next) => {
   try {
     const { room, before, limit = 20 } = req.query;
@@ -100,6 +115,45 @@ router.get("/:id", async (req, res, next) => {
     return ResponseResult.success(res, message, "Message found");
   } catch (error) {
     console.error("Error fetching message:", error);
+    next(error);
+  }
+});
+
+router.put("/:id", async (req, res, next) => {
+  try {
+    const messageId = req.params.id;
+    const { text, code, imageUrl } = req.body;
+
+    // Find the message by ID
+    const message = await Message.findById(messageId);
+
+    // Check if the message exists
+    if (!message) {
+      return ResponseResult.fail(res, "Message not found", 404);
+    }
+
+    // Update the message fields if provided
+    if (text) {
+      message.text = text;
+    }
+    if (code) {
+      message.code = code;
+    }
+    if (imageUrl) {
+      message.imageUrl = imageUrl;
+    }
+
+    // Save the updated message
+    const updatedMessage = await message.save();
+
+    // Return success response with the updated message
+    return ResponseResult.success(
+      res,
+      updatedMessage,
+      "Message updated successfully"
+    );
+  } catch (error) {
+    console.error("Error updating message:", error);
     next(error);
   }
 });

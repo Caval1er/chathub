@@ -53,7 +53,7 @@ router.get("/member/:userId", async (req, res, next) => {
       userId: userId,
     }).populate({
       path: "channelId",
-      select: "name description avatar", // 选择返回频道的名称和描述
+      select: "name description avatar creator", // 选择返回频道的名称和描述
     });
 
     if (!memberships || memberships.length === 0) {

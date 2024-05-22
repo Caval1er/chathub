@@ -153,8 +153,8 @@ const countdownText = computed(() => {
   return countdown.value > 0 ? `${countdown.value}秒` : '重新发送'
 })
 const form = reactive({
-  email: '245692084@qq.com',
-  password: 'Zhangjiahao123..',
+  email: '',
+  password: '',
   vertifyCode: '',
 })
 const rules = {

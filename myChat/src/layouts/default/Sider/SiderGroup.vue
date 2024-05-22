@@ -1,14 +1,16 @@
 <template>
-  <span>在线用户 </span>
+  <div class="ml-2 mt-2">在线用户</div>
 
   <v-list lines="three">
     <v-list-item
       v-for="user in userList.filter((user) => user.isOnline === true)"
       :key="user._id"
-      :title="user.nickname"
       :subtitle="user.bio"
       :value="user._id"
     >
+      <template v-slot:title
+        ><span>{{ user.nickname }}</span></template
+      >
       <template v-slot:prepend>
         <v-avatar color="grey-lighten-1">
           <v-img :src="user.avatar"></v-img>
@@ -17,18 +19,20 @@
     </v-list-item>
   </v-list>
 
-  <span>离线用户</span>
+  <div class="ml-2">离线用户</div>
 
   <v-list lines="three">
     <v-list-item
       v-for="user in userList.filter((user) => user.isOnline === false)"
       :key="user._id"
-      :title="user.nickname"
       :subtitle="user.bio"
       :value="user._id"
     >
+      <template v-slot:title
+        ><span class="text-disabled">{{ user.nickname }}</span></template
+      >
       <template v-slot:prepend>
-        <v-avatar color="grey-lighten-1">
+        <v-avatar color="grey-lighten-1" style="opacity: 0.3">
           <v-img :src="user.avatar"></v-img>
         </v-avatar>
       </template>

@@ -1,11 +1,8 @@
 <template>
-
-  <v-list>
-    <v-list-item
-      class="cursor-pointer"
-      prepend-avatar="https://cdn.vuetifyjs.com/images/john.png"
-    ></v-list-item>
-  </v-list>
+  <div class="avatar d-flex justify-center mb-4 mt-4"> <v-avatar>
+      <v-img :src="userStore.getUserInfo.avatar"></v-img>
+    </v-avatar></div>
+   
   <v-divider></v-divider>
   <v-list density="compact" nav @click:select="onItemSelect" class="d-flex flex-column align-center">
     <v-list-item
@@ -78,6 +75,7 @@
           title="加入"
           subtitle="输入即时邀请并加入你小伙伴的频道"
           value="加入"
+          @click.prevent="toggleDialog({ dialog1: false, dialog3: true })"
         >
           <template v-slot:prepend>
             <v-avatar color="grey-lighten-1">
@@ -108,6 +106,7 @@
           class="channel-form"
           v-model="valid"
           @submit.prevent="createChannel"
+          ref="formCreateRef"
         >
           <v-row dense class="d-flex align-center">
             <v-col cols="4"
@@ -139,12 +138,31 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
-
+  <v-dialog v-model="dialogList['dialog3']" class="dialog-interface-join" width="500">
+<v-card title="加入">
+  <v-card-text>
+    <v-form  @submit.prevent="joinChannel" ref="formjoinRef">
+      <v-text-field clearable v-model="formJoin.messageId" placeholder="请输入频道id"</v-text-field>
+    </v-form>
+  </v-card-text>
+  <v-card-actions>
+    <v-spacer></v-spacer>
+    <v-btn
+          text="返回"
+          variant="text"
+          @click="toggleDialog({ dialog1: true, dialog3: false })"
+          
+        ></v-btn>
+        <v-btn text="加入" variant="text" @click="joinChannel" :loading="addUserToChannelRequest.loading.value"</v-btn>
+  </v-card-actions>
+</v-card>
+  </v-dialog>
 </template>
 
 <script setup>
 import { reactive, onMounted, ref, computed, watch } from 'vue'
 import { getChannelByUser,createChannelByUser } from '@/api/chat/channel'
+import {addUserToChannel} from '@/api/chat/channel-membership'
 import { validateAvatar } from '@/utlis/validator'
 import { useRequest } from 'vue-request'
 import useUserStore from '@/store/modules/user'
@@ -156,17 +174,25 @@ const router =useRouter()
 const route = useRoute()
 const getChannelByUserRequest = useRequest(getChannelByUser)
 const createChannelByUserRequest = useRequest(createChannelByUser)
+const addUserToChannelRequest =useRequest(addUserToChannel)
 const userStore = useUserStore()
 const channelStore = useChannelStore()
 const socketStore =useSocketStore()
+const formjoinRef=ref(null)
+const formCreateRef=ref(null)
 const dialogList = reactive({
   dialog1: false,
   dialog2: false,
+  dialog3:false
 })
 
 const form = reactive({
   name: '',
   avatar: '',
+})
+
+const formJoin=reactive({
+  messageId:''
 })
 const valid = ref(null)
 onMounted(async () => {
@@ -186,12 +212,13 @@ onMounted(async () => {
   
 },{immediate:true})
 watch(()=>route.params.roomId,(val)=>{
+  if(!val) return
   const currentRoom = socketStore.getCurrentRoom
   if(currentRoom){
     socketStore.getSocket.emit(
       'leave-room',
       { userId: userStore.getUserId, roomId: socketStore.getCurrentRoom },
-      (s) => console.log('s:', s),
+      (s) => console.log('leave-room:', s),
     )
   }
   socketStore.setCurrentRoom(val)
@@ -220,15 +247,30 @@ function toggleDialog(dialogObj) {
 
 async function createChannel() {
   try {
-    await createChannelByUserRequest.runAsync(form.name,form.avatar,userStore.getUserId)
+    const data = await createChannelByUserRequest.runAsync(form.name,form.avatar,userStore.getUserId)
     const channelsInfo=await getChannelByUserRequest.runAsync( userStore.getUserId) 
     channelStore.assignChannel(...channelsInfo)
+    router.push({name:'Channel',params:{channelId:data.channel._id,roomId:data.room._id}})
   } catch (error) {
     console.error(error)
   }finally{
     toggleDialog({dialog2:false})
+    formCreateRef.value.reset()
   }
+}
 
+async function joinChannel(){
+  try {
+    const data = await addUserToChannelRequest.runAsync(formJoin.messageId,userStore.getUserId)
+    const channelsInfo=await getChannelByUserRequest.runAsync( userStore.getUserId) 
+    channelStore.assignChannel(...channelsInfo)
+    
+  } catch (error) {
+    
+  }finally{
+    toggleDialog({dialog3:false})
+    formjoinRef.value.reset()
+  }
 }
 
 function isActive(channel){

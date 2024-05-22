@@ -2,8 +2,9 @@ import { pageConst } from '@/constant/pageConstant'
 import { useUserStoreWithOut } from '@/store/modules/user'
 import { useSocketStoreWithOut } from '@/store/modules/socket'
 const AUTH_PATH = pageConst.BASE_LOGIN
+const THIRD_LOGIN_PATH = pageConst.BASE_THIRD_LOGIN
 // 白名单
-const whitePathList = [AUTH_PATH]
+const whitePathList = [AUTH_PATH, THIRD_LOGIN_PATH]
 // 权限路由
 export function createPermissionGuard(router) {
   const userStore = useUserStoreWithOut()

@@ -20,49 +20,8 @@ router.get(
   "/github/callback",
   passport.authenticate("github", { session: false, failWithError: true }),
   async (req, res, next) => {
-    console.log(req.user.info);
-    const { accessToken, refreshToken, info } = req.user;
     try {
-      if (info.isLinked) {
-        const newUser = await User.findOneAndUpdate(
-          { email: info.email },
-          {
-            "profile.github.github_id": info.profile.githubId,
-            "profile.github.github_url": info.profile.githubUrl,
-          },
-          { new: true }
-        );
-        if (!newUser) {
-          ResponseResult.fail(res, "更新github信息失败");
-          return;
-        }
-        ResponseResult.success(
-          res,
-          {
-            accessToken,
-            refreshToken,
-          },
-          "更新github信息成功"
-        );
-      } else {
-        ResponseResult.sendResponseManual(
-          res,
-          0,
-          "请关联github账号",
-          {
-            linkWay: "github",
-            profile: {
-              github: {
-                githubId: info.profile.githubId,
-                githubUrl: info.profile.githubUrl,
-              },
-              accessToken,
-              refreshToken,
-            },
-          },
-          302
-        );
-      }
+      res.redirect(`http://localhost:5173/thirdLogin?token=${req.user}`);
     } catch (error) {
       console.log(error);
       next(error);

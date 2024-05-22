@@ -18,6 +18,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  githubId: {
+    type: String,
+  },
+  githubUrl: {
+    type: String,
+  },
 });
 
 userSchema.plugin(passportLocalMongoose, {

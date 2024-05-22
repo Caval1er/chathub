@@ -7,6 +7,7 @@ function useSocketIo(server) {
   const users = new Map();
   const channels = new Map();
   const rooms = new Map();
+  const collaborates = new Map();
   const io = new Server(server, {
     cors: {
       origin: "http://localhost:5173",
@@ -86,16 +87,13 @@ function useSocketIo(server) {
     });
     socket.on("join-room", async ({ userId, roomId }, cb) => {
       socket.join(roomId);
-
       if (!rooms.has(roomId)) {
         rooms.set(roomId, new Set());
       }
-
       rooms.get(roomId).add(userId);
       if (users.get(userId)) {
         users.get(userId).rooms.add(roomId);
       }
-
       await updateRoomUsers(roomId);
       cb({ status: "ok" });
     });
@@ -108,8 +106,78 @@ function useSocketIo(server) {
       cb({ status: "leave room ok" });
     });
     socket.on(
+      "join-collaborate",
+      async ({ messageId, roomId, content, user, canEdit }, cb) => {
+        socket.join(messageId);
+        if (!collaborates.has(roomId)) {
+          collaborates.set(roomId, new Map());
+        }
+        if (!collaborates.get(roomId).has(messageId)) {
+          collaborates
+            .get(roomId)
+            .set(messageId, { content: content, users: {}, canEdit: canEdit });
+        }
+        collaborates.get(roomId).get(messageId).users[user.id] = user.info;
+        if (canEdit !== undefined)
+          collaborates.get(roomId).get(messageId).canEdit = canEdit;
+        console.log("obj:", collaborates.get(roomId).get(messageId).users);
+        const collaborateObj = {};
+
+        for ([key, value] of collaborates.get(roomId)) {
+          collaborateObj[key] = {
+            messageId: key,
+            content: value.content,
+            canEdit: value.canEdit,
+            users: Object.values(value.users),
+          };
+        }
+        io.to(roomId).emit("collaborateUpdate", {
+          messageId,
+          collaborates: collaborateObj,
+          roomId: roomId,
+          userId: user.id,
+        });
+        cb({
+          status: "collaborate ok",
+          data: {
+            messageId,
+            content: collaborateObj[messageId].content,
+            collaborates: collaborateObj,
+            users: collaborateObj[messageId].users,
+          },
+        });
+      }
+    );
+    socket.on("leave-collaborate", async ({ messageId, roomId, user }, cb) => {
+      if (collaborates.get(roomId)) {
+        delete collaborates.get(roomId).get(messageId).users[user.id];
+      }
+      const collaborateObj = {};
+      for ([key, value] of collaborates.get(roomId)) {
+        collaborateObj[key] = {
+          messageId: key,
+          content: value.content,
+          canEdit: value.canEdit,
+          users: Object.values(value.users),
+        };
+      }
+      io.to(roomId).emit("collaborateUpdate", {
+        messageId,
+        collaborates: collaborateObj,
+        roomId: roomId,
+      });
+      cb({
+        status: "leave-collaborate ok",
+        data: {
+          messageId,
+          collaborates: collaborateObj,
+        },
+      });
+      socket.leave(messageId);
+    });
+    socket.on(
       "send-message",
-      async ({ sender, room, type, text, code, imageUrl }, cb) => {
+      async ({ sender, room, type, text, code, messageId }, cb) => {
         try {
           // 验证必要的字段
           if (!sender || !room || !type) {
@@ -131,17 +199,20 @@ function useSocketIo(server) {
               newMessage = new Message({ sender, room, type, code });
               break;
             case "image":
-              if (!imageUrl)
-                return cb({ status: "error", message: "图片必须提供链接" });
-              newMessage = new Message({ sender, room, type, imageUrl });
+              newMessage = Message.findById(messageId);
               break;
             default:
               return cb({ status: "error", message: "未知的文本类型" });
           }
           // 创建新的消息对象，根据需求可以调整模型
-
+          let savedMessage;
           // 保存消息
-          const savedMessage = await newMessage.save();
+          if (type === "text" || type === "code") {
+            savedMessage = await newMessage.save();
+          } else if (type === "image") {
+            savedMessage = newMessage;
+          }
+
           // 广播新消息给房间内的所有用户
           const resultMessage = await savedMessage.populate({
             path: "sender",
@@ -160,7 +231,70 @@ function useSocketIo(server) {
         }
       }
     );
-    socket.on("edit-code", () => {});
+    socket.on("get-collaborate", async ({ roomId }, cb) => {
+      if (!collaborates.has(roomId)) {
+        return cb({ status: "error", message: "Room or message not found" });
+      }
+      console.log("cl:", collaborates.get(roomId));
+      cb({
+        status: "ok",
+        data: {
+          collaborates: getCollaboratesObject(roomId),
+          roomId,
+        },
+      });
+    });
+    socket.on(
+      "edit-code",
+      ({ messageId, roomId, editedContent, userId }, cb) => {
+        // 检查是否存在相应的房间和消息
+        if (
+          !collaborates.has(roomId) ||
+          !collaborates.get(roomId).has(messageId)
+        ) {
+          return cb({ status: "error", message: "Room or message not found" });
+        }
+
+        // 更新消息内容
+        collaborates.get(roomId).get(messageId).content = editedContent;
+
+        // 广播更新
+        io.to(roomId).emit("collaborateUpdate", {
+          messageId,
+          collaborates: getCollaboratesObject(roomId),
+
+          roomId,
+          userId,
+        });
+        io.to(messageId).emit("new-code", {
+          content: editedContent,
+        });
+
+        cb({
+          status: "edit ok",
+          data: {
+            messageId,
+            content: editedContent,
+            collaborates: getCollaboratesObject(roomId),
+            users: collaborates.get(roomId).get(messageId).users,
+          },
+        });
+      }
+    );
+
+    // 辅助函数：获取房间中所有消息的协作对象
+    function getCollaboratesObject(roomId) {
+      const collaborateObj = {};
+      for (const [key, value] of collaborates.get(roomId)) {
+        collaborateObj[key] = {
+          messageId: key,
+          content: value.content,
+          canEdit: value.canEdit,
+          users: Object.values(value.users),
+        };
+      }
+      return collaborateObj;
+    }
     socket.on("disconnect", async () => {
       console.log("User disconnected:", socket.id);
       try {
@@ -198,7 +332,6 @@ function useSocketIo(server) {
     }
 
     async function updateRoomUsers(roomId) {
-      console.log(rooms.get(roomId));
       const userIds = Array.from(rooms.get(roomId) || []);
       const usersInfo = await Promise.all(
         userIds.map(async (userId) => {

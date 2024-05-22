@@ -4,12 +4,18 @@ const useChannelStore = defineStore('channel', {
   state: () => ({
     channels: [],
     currentChannel: null,
+    createColUserId: '',
+    messageId: '',
+    switchRef: {},
   }),
   getters: {
     // 获取频道列表
     getChannels: (state) => state.channels,
     // 获取当前频道
     getCurrentChannel: (state) => state.currentChannel,
+    getCreateColUserId: (state) => state.createColUserId,
+    getMessageId: (state) => state.messageId,
+    getSwitch: (state) => state.switchRef,
   },
   actions: {
     // 添加新频道到列表
@@ -20,6 +26,15 @@ const useChannelStore = defineStore('channel', {
     assignChannel(...channel) {
       console.log('channel:', channel)
       this.channels.splice(0, this.channels.length, ...channel)
+    },
+    setCreateColUserId(id) {
+      this.createColUserId = id
+    },
+    setMessageId(messageId) {
+      this.messageId = messageId
+    },
+    setSwitch(switchref) {
+      Object.assign(this.switchRef, switchref)
     },
     // 设置当前频道
     setCurrentChannel(channelId) {

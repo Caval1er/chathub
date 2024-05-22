@@ -55,6 +55,15 @@ const useUserStore = defineStore('user', {
         Promise.reject(error)
       }
     },
+    async thirdLogin(token) {
+      try {
+        this.setToken(token)
+        socketStore.initializeSocket(this.token)
+        await this.afterLoginAction()
+      } catch (error) {
+        Promise.reject(error)
+      }
+    },
     async afterLoginAction() {
       if (!this.getToken) return null
       try {

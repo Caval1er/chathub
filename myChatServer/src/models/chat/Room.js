@@ -13,7 +13,7 @@ const RoomSchema = new Schema(
       ref: "Channel",
       required: true,
     },
-    password: {
+    pass: {
       type: String,
     },
   },

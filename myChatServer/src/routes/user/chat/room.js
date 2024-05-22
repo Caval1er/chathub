@@ -24,7 +24,7 @@ router.post("/", async (req, res, next) => {
     const newRoom = new RoomModel({
       name,
       channelId,
-      password,
+      pass: password,
     });
 
     const savedRoom = await newRoom.save();
@@ -61,13 +61,22 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+router.get("/:id/password", async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { password } = req.query;
+    const result = await RoomModel.findById(id);
+    console.log("pass:", result.pass);
+    console.log("password:", password);
+    ResponseResult.success(res, result.pass === password, "获取结果");
+  } catch (error) {}
+});
+
 //根据频道Id获取房间列表
 router.get("/channel/:channelId", async (req, res, next) => {
   try {
     const id = req.params.channelId;
-    const room = await RoomModel.find({ channelId: id }).select(
-      "-password -channelId"
-    );
+    const room = await RoomModel.find({ channelId: id }).select(" -channelId");
     if (!room || room.length === 0) {
       ResponseResult.fail(res, "房间未找到", 404);
       return;
@@ -92,8 +101,7 @@ router.patch("/:id", async (req, res, next) => {
     room.name = name || room.name;
     room.channel = channel || room.channel;
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      room.password = await bcrypt.hash(password, salt);
+      room.pass = password;
     }
 
     const updatedRoom = await room.save();

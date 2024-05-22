@@ -9,13 +9,15 @@ export const useSocketStore = defineStore('socket', {
     channelUserInfo: new Map(),
     hasJoinChannel: new Set(),
     roomUserInfo: new Map(),
-    currentRoom: '',
+    currentRoom: { roomId: 0, collaborates: { content: '', users: [] } },
+    roomcollaborates: new Map(),
   }),
   getters: {
     getSocket: (state) => state.socket,
     getHasJoinChannel: (state) => state.hasJoinChannel,
     getChannelUserInfo: (state) => state.channelUserInfo,
     getCurrentRoom: (state) => state.currentRoom,
+    getRoomCollaborates: (state) => state.roomcollaborates,
   },
   actions: {
     initializeSocket(token) {
@@ -33,10 +35,14 @@ export const useSocketStore = defineStore('socket', {
         })
       })
       this.socket.on('roomUsersUpdate', (data) => {
-        console.log(data)
         this.setRoomUserInfo(data.roomId, {
           users: data.users,
         })
+      })
+      this.socket.on('collaborateUpdate', (data) => {
+        console.log('collaborateData:', data)
+        this.setRoomcollaborates(data.roomId, data.collaborates)
+        this.setCurrentRoom(data.roomId, data.collaborates)
       })
     },
     disconnectSocket() {
@@ -54,9 +60,12 @@ export const useSocketStore = defineStore('socket', {
     setRoomUserInfo(roomId, info) {
       this.roomUserInfo.set(roomId, info)
     },
-    async setCurrentRoom(room) {
-      const roomInfo = await getRoomById(room)
-      this.currentRoom = roomInfo
+    setRoomcollaborates(roomId, info) {
+      this.roomcollaborates.set(roomId, info)
+    },
+    async setCurrentRoom(room, collaborates) {
+      this.currentRoom.roomId = room
+      this.currentRoom.collaborates = collaborates
     },
   },
 })

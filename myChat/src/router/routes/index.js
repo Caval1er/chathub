@@ -23,4 +23,16 @@ export const LoginRoute = {
   component: () => import('@/views/auth/index.vue'),
 }
 
-export const basicRoutes = [RootRoute, LoginRoute, ...routeModuleList]
+//第三方登录路由
+export const thirdLoginRoute = {
+  path: '/thirdLogin',
+  name: 'ThirdLogin',
+  component: () => import('@/views/auth/ThirdLogin.vue'),
+}
+
+export const basicRoutes = [
+  RootRoute,
+  LoginRoute,
+  thirdLoginRoute,
+  ...routeModuleList,
+]

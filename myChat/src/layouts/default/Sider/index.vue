@@ -4,6 +4,7 @@
     :location="props.location"
     :width="widthStyle"
     :rail-width="railWidthStyle"
+    style="background-color: #f2f2f2"
   >
     <sider-detail :type="props.detailType"></sider-detail>
   </v-navigation-drawer>

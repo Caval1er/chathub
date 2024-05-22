@@ -22,15 +22,6 @@
       class="text-subtitle-1 text-medium-emphasis d-flex align-center justify-space-between mt-3"
     >
       密码
-
-      <a
-        class="text-caption text-decoration-none text-blue"
-        href="#"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        Forgot login password?</a
-      >
     </div>
     <v-text-field
       placeholder="输入你的密码"
@@ -49,16 +40,20 @@
       maxlength="16"
     ></v-text-field>
 
-    <div class="d-flex mt-4 justify-center">
+    <div class="d-flex mt-4 justify-center flex-column">
       <v-btn
         :loading="loading"
         :disabled="!valid"
         variant="elevated"
         type="submit"
         color="primary"
+        block
       >
         登录
       </v-btn>
+      <v-btn variant="elevated" block @click="githubLogin"
+        >Github <v-icon>mdi-github</v-icon></v-btn
+      >
     </div>
   </v-form>
 </template>
@@ -72,8 +67,8 @@ const loading = ref(false)
 const userStore = useUserStore()
 const showPassword = ref(false)
 const form = reactive({
-  email: '245692084@qq.com',
-  password: 'Zhangjiahao123..',
+  email: '',
+  password: '',
 })
 const rules = {
   emailRules: [(v) => isRequired(v), (v) => validateEmail(v)],
@@ -107,6 +102,9 @@ const login = async () => {
   } finally {
     loading.value = false
   }
+}
+const githubLogin = () => {
+  window.location.href = 'http://localhost:3000/api/auth/github'
 }
 </script>
 
